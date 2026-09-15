@@ -84,9 +84,9 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
 
             item { Section("Voice") }
             item { SwitchRow("Wake word \"Jarvis\"", "Always listen for the wake word", s.wakeWordEnabled, onChange = {
-                v -> vm.update { it.copy(wakeWordEnabled = v) } } }
+                v -> vm.update { it.copy(wakeWordEnabled = v) } }) }
             item { SwitchRow("Background listening", "Restart after reboot (uses foreground service)", s.backgroundListening) { v ->
-                vm.update { it.copy(backgroundListening = v) } }
+                vm.update { it.copy(backgroundListening = v) } } }
             item {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     Text("Wake word sensitivity: ${(s.sensitivity * 100).toInt()}%",
@@ -97,7 +97,7 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
             item { EditRow("Language", s.language) { v -> vm.update { it.copy(language = v) } } }
             item { EditRow("Assistant voice", s.assistantVoice) { v -> vm.update { it.copy(assistantVoice = v) } } }
             item { SwitchRow("Floating Jarvis bubble", "Like Gemini — drag it, long-press to open chat", s.overlayEnabled) { v ->
-                vm.update { it.copy(overlayEnabled = v) } }
+                vm.update { it.copy(overlayEnabled = v) } } }
             item {
                 TextButton(onClick = { vm.showOverlay(context) }) { Text("Show floating bubble now") }
             }
