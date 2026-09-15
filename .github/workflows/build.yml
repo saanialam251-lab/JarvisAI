@@ -19,8 +19,15 @@ jobs:
 
       - name: Generate Gradle wrapper
         run: |
+          mkdir -p "$HOME/wrapper-gen"
+          cd "$HOME/wrapper-gen"
           gradle wrapper --gradle-version 8.10.2 --distribution-type bin
-          chmod +x gradlew
+          cp gradlew gradlew.bat "$GITHUB_WORKSPACE/"
+          cp -r gradle "$GITHUB_WORKSPACE/"
+          chmod +x "$GITHUB_WORKSPACE/gradlew"
+
+      - name: Write google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
       - name: Build APK
         run: ./gradlew assembleDebug
