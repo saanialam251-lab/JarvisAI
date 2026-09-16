@@ -18,6 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class ActionExecutor @Inject constructor(
     private val intents: IntentController,
+    private val system: SystemController,
     private val battery: BatteryMonitor,
     private val device: DeviceMonitor,
     private val network: NetworkMonitor,
@@ -95,6 +96,29 @@ class ActionExecutor @Inject constructor(
             is JarvisAction.QueryDevice -> answerQuery(step.topic)
 
             is JarvisAction.Speak -> Unit // spoken by caller
+
+            is JarvisAction.SetVolume -> system.setVolumePercent(step.percent)
+
+            is JarvisAction.SetBrightness ->
+                if (!system.setBrightnessPercent(step.percent))
+                    error("Jarvis needs the 'Modify system settings' permission first — grant it on the Permissions screen.")
+
+            is JarvisAction.CallContact -> {
+                when (system.callContact(step.name)) {
+                    SystemController.CallResult.Called, SystemController.CallResult.DialerOpened -> Unit
+                    SystemController.CallResult.NoContactsPermission ->
+                        error("Jarvis needs the Contacts permission to find '${step.name}'.")
+                    SystemController.CallResult.ContactNotFound ->
+                        error("No contact named '${step.name}' was found.")
+                }
+            }
+
+            is JarvisAction.ToggleSpeaker -> system.setSpeakerOn(step.on)
+
+            is JarvisAction.OpenWebsite -> system.openWebsiteInChrome(step.query)
+
+            JarvisAction.OpenPowerMenu ->
+                if (!system.openPowerMenu()) error("Couldn't open the power menu.")
         }
     }
 
