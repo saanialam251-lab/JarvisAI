@@ -12,7 +12,8 @@ class AiProviderFactory @Inject constructor(
     private val prefs: JarvisPrefs,
 ) {
     /** Picks the configured provider; silently falls back to local. */
-    suspend fun current(): AIProvider =
-        if (prefs.settings.first().aiProvider == "cloud" &&
-            prefs.settings.first().apiKey.isNotBlank()) cloud else local
+    suspend fun current(): AIProvider {
+        val s = prefs.settings.first()
+        return if (s.aiProvider == "cloud" && s.apiKey.isNotBlank()) cloud else local
+    }
 }
