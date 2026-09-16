@@ -12,8 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Multi-step task engine (requirement #5): timeout, retry, UI-state
- * verification between steps, back-navigation recovery, graceful stop.
+ * Multi-step task engine: timeout, retry, UI-state verification between
+ * steps, back-navigation recovery, graceful stop.
  */
 @Singleton
 class ActionExecutor @Inject constructor(
@@ -25,7 +25,10 @@ class ActionExecutor @Inject constructor(
     private val STEP_TIMEOUT_MS = 12_000L
     private val MAX_RETRIES = 2
 
-    sealed interface ExecResult { data class Ok(val spoken: String?) : ExecResult; data class Fail(val reason: String) : ExecResult }
+    sealed interface ExecResult {
+        data class Ok(val spoken: String?) : ExecResult
+        data class Fail(val reason: String) : ExecResult
+    }
 
     suspend fun execute(plan: TaskPlan, onProgress: (String) -> Unit = {}): ExecResult {
         TaskLog.add(plan.goal, "started")
@@ -36,14 +39,15 @@ class ActionExecutor @Inject constructor(
 
             var ok = false
             var lastError = "unknown error"
-            repeat(MAX_RETRIES + 1) { attempt ->
+            for (attempt in 0..MAX_RETRIES) {
                 if (attempt > 0) delay(600)
                 val r = withTimeoutOrNull(STEP_TIMEOUT_MS) { perform(step) }
                 when {
                     r == null -> lastError = "timed out"
-                    r.isSuccess -> { ok = true; return@repeat }
+                    r.isSuccess -> ok = true
                     else -> lastError = r.exceptionOrNull()?.message ?: "failed"
                 }
+                if (ok) break
             }
 
             if (!ok) {
@@ -70,10 +74,10 @@ class ActionExecutor @Inject constructor(
 
             is JarvisAction.TapText ->
                 if (!AccessibilityController.tapText(step.text, step.exact))
-                    error("Could not find '$step.text' on screen. Try saying 'Jarvis' when the app is open.")
+                    error("Could not find '${step.text}' on screen. Try saying 'Jarvis' when the app is open.")
 
             is JarvisAction.TapViewDesc ->
-                if (!AccessibilityController.tapDesc(step.desc)) error("'$step.desc' control not found")
+                if (!AccessibilityController.tapDesc(step.desc)) error("'${step.desc}' control not found")
 
             is JarvisAction.TypeText ->
                 if (!AccessibilityController.typeText(step.text)) error("No text field focused")
@@ -96,9 +100,9 @@ class ActionExecutor @Inject constructor(
 
     private suspend fun answerQuery(topic: String) {
         when (topic) {
-            "battery" -> { battery.refreshOnce() }
-            "storage" -> { device.refreshOnce() }
-            "network" -> { network.refreshOnce() }
+            "battery" -> battery.refreshOnce()
+            "storage" -> device.refreshOnce()
+            "network" -> network.refreshOnce()
             "open_wifi" -> intents.openWifiSettings()
         }
     }
