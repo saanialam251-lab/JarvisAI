@@ -4,14 +4,15 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import com.jarvis.assistant.service.JarvisAccessibilityService
 
 /**
- * Semantic UI control layer (requirement #4): works with text,
- * content-descriptions and view IDs — never fixed screen coordinates.
- * Falls back to gesture taps only when a node refuses clicks.
+ * Semantic UI control layer: works with text, content-descriptions and
+ * view IDs — never fixed screen coordinates. Falls back to gesture taps
+ * only when a node refuses clicks.
  */
 object AccessibilityController {
 
@@ -20,7 +21,7 @@ object AccessibilityController {
     fun isReady(): Boolean = service?.rootInActiveWindow != null
     private fun root(): AccessibilityNodeInfo? = service?.rootInActiveWindow
 
-    // ---------- observation (the "Observe screen" step) ----------
+    // ---------- observation ----------
     fun uiSummary(maxNodes: Int = 80): String {
         val sb = StringBuilder()
         flatten(root(), sb, 0, maxNodes)
@@ -95,7 +96,10 @@ object AccessibilityController {
     fun submitSearch(): Boolean {
         // Try the IME/search affordance first, then a "Search"/"OK" label.
         val ime = walk(root()) { it.className?.toString()?.contains("EditText") == true }
-        if (ime?.performAction(AccessibilityNodeInfo.ACTION_IME_ACTION_ENTER) == true) return true
+        if (ime != null && Build.VERSION.SDK_INT >= 30) {
+            val imeEnter = AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id
+            if (ime.performAction(imeEnter)) return true
+        }
         listOf("Search", "OK", "Go", "search").forEach { label ->
             findByDesc(label)?.let { if (tapNode(it)) return true }
             findByText(label, exact = true)?.let { if (tapNode(it)) return true }
@@ -105,8 +109,11 @@ object AccessibilityController {
 
     fun scrollForward(targetText: String?): Boolean {
         val target = targetText?.let { findByText(it, false) }
-        val scrollable = walk(root()) { it.isScrollable && it.actionList.any { a -> a.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD.id } }
-            ?: return false
+        val scrollable = walk(root()) { node ->
+            node.isScrollable && node.actionList.any { a ->
+                a.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD.id
+            }
+        } ?: return false
         if (target != null && isVisible(target)) return true
         return scrollable.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD.id)
     }
@@ -122,13 +129,11 @@ object AccessibilityController {
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, 80))
             .build()
-        val ok = BooleanArray(1)
         svc.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
-            override fun onCompleted(g: GestureDescription?) { ok[0] = true }
+            override fun onCompleted(g: GestureDescription?) {}
         }, null)
-        // dispatchGesture is async; give it a moment
         Thread.sleep(250)
-        return ok[0] || true // gesture dispatched; result callback is best-effort
+        return true // gesture dispatched; result callback is best-effort
     }
 
     fun back() { service?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) }
