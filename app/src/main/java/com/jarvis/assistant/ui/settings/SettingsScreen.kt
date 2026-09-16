@@ -42,15 +42,20 @@ class SettingsViewModel @Inject constructor(
     val settings = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, JarvisSettings())
     var modelProgress by mutableStateOf(-1); private set
     var modelReady by mutableStateOf(false); private set
+    var modelError by mutableStateOf<String?>(null); private set
 
     fun checkModel(ctx: android.content.Context) { modelReady = ModelManager(ctx).isModelReady() }
 
     fun downloadModel(ctx: android.content.Context) {
         viewModelScope.launch {
             modelProgress = 0
-            ModelManager(ctx).downloadModel { p -> modelProgress = p }
+            modelError = null
+            val result = ModelManager(ctx).downloadModel { p -> modelProgress = p }
             modelReady = ModelManager(ctx).isModelReady()
             modelProgress = -1
+            if (result.isFailure) {
+                modelError = result.exceptionOrNull()?.message ?: "Download failed. Check your connection and try again."
+            }
         }
     }
 
@@ -120,11 +125,23 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
                 else {
                     Column {
                         Text("Model not installed (~40 MB, one-time download)")
-                        if (vm.modelProgress >= 0) LinearProgressIndicator(
-                            progress = { vm.modelProgress / 100f },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+                        if (vm.modelProgress >= 0) {
+                            LinearProgressIndicator(
+                                progress = { vm.modelProgress / 100f },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+                            Text("${vm.modelProgress}%", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        vm.modelError?.let { err ->
+                            Text(err, color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp))
+                        }
                         Button(onClick = { vm.downloadModel(context) },
-                            enabled = vm.modelProgress < 0) { Text("Download model") }
+                            enabled = vm.modelProgress < 0,
+                            modifier = Modifier.padding(top = 8.dp)) {
+                            Text(if (vm.modelError != null) "Retry download" else "Download model")
+                        }
                     }
                 }
             }
