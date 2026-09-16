@@ -46,14 +46,15 @@ class NetworkMonitor @Inject constructor(
     private fun refresh() {
         val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
         val connected = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        val onWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        val onCellular = caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
         val type = when {
             caps == null -> "None"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Mobile (${caps.linkDownstreamBandwidthKbps / 1000} Mbps down)"
+            onWifi -> "Wi-Fi"
+            onCellular -> "Mobile (${caps.linkDownstreamBandwidthKbps / 1000} Mbps down)"
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
             else -> "Other"
         }
-        val wifiOn = cm.getNetworkInfo(android.net.NetworkCapabilities.TRANSPORT_WIFI) != null
-        _state.value = NetworkInfo(connected, type, wifiOn, type.startsWith("Mobile"))
+        _state.value = NetworkInfo(connected, type, onWifi, onCellular)
     }
 }
