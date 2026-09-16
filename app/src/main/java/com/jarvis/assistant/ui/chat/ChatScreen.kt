@@ -3,7 +3,6 @@ package com.jarvis.assistant.ui.chat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,7 +71,7 @@ fun ChatScreen(nav: NavController, vm: ChatViewModel = hiltViewModel()) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            items(messages, key = { it.time }) { msg -> MessageBubble(msg) }
+            items(messages.size) { i -> MessageBubble(messages[i]) }
             if (ui.busy && messages.isNotEmpty()) {
                 item { Text("Jarvis is working…", color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall) }
@@ -80,7 +79,7 @@ fun ChatScreen(nav: NavController, vm: ChatViewModel = hiltViewModel()) {
         }
     }
 
-    // sensitive-action confirmation dialog (requirement #13)
+    // sensitive-action confirmation dialog
     ui.confirmation?.let { req ->
         AlertDialog(
             onDismissRequest = { vm.resolveConfirmation(false) },
