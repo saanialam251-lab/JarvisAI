@@ -18,6 +18,12 @@ sealed interface JarvisAction {
     data class ScrollForward(val targetText: String? = null) : JarvisAction
     data class QueryDevice(val topic: String) : JarvisAction
     data class Speak(val text: String) : JarvisAction
+    data class SetVolume(val percent: Int) : JarvisAction
+    data class SetBrightness(val percent: Int) : JarvisAction
+    data class CallContact(val name: String) : JarvisAction
+    data class ToggleSpeaker(val on: Boolean) : JarvisAction
+    data class OpenWebsite(val query: String) : JarvisAction
+    data object OpenPowerMenu : JarvisAction
 
     val description: String
         get() = when (this) {
@@ -31,6 +37,12 @@ sealed interface JarvisAction {
             is ScrollForward -> if (targetText != null) "Scrolling to find '$targetText'" else "Scrolling"
             is QueryDevice -> "Checking $topic"
             is Speak -> text
+            is SetVolume -> "Setting volume to $percent%"
+            is SetBrightness -> "Setting brightness to $percent%"
+            is CallContact -> "Calling $name"
+            is ToggleSpeaker -> if (on) "Turning speaker on" else "Turning speaker off"
+            is OpenWebsite -> "Opening $query"
+            OpenPowerMenu -> "Opening power menu"
         }
 }
 
@@ -54,6 +66,12 @@ data class TaskPlan(
                 is JarvisAction.ScrollForward -> o.put("action", "scroll").put("target", s.targetText ?: "")
                 is JarvisAction.QueryDevice -> o.put("action", "query_device").put("topic", s.topic)
                 is JarvisAction.Speak -> o.put("action", "speak").put("text", s.text)
+                is JarvisAction.SetVolume -> o.put("action", "set_volume").put("percent", s.percent)
+                is JarvisAction.SetBrightness -> o.put("action", "set_brightness").put("percent", s.percent)
+                is JarvisAction.CallContact -> o.put("action", "call_contact").put("name", s.name)
+                is JarvisAction.ToggleSpeaker -> o.put("action", "toggle_speaker").put("on", s.on)
+                is JarvisAction.OpenWebsite -> o.put("action", "open_website").put("query", s.query)
+                JarvisAction.OpenPowerMenu -> o.put("action", "open_power_menu")
             }
             arr.put(o)
         }
@@ -78,6 +96,12 @@ data class TaskPlan(
                     "scroll" -> JarvisAction.ScrollForward(o.optString("target").ifBlank { null })
                     "query_device" -> JarvisAction.QueryDevice(o.getString("topic"))
                     "speak" -> JarvisAction.Speak(o.getString("text"))
+                    "set_volume" -> JarvisAction.SetVolume(o.optInt("percent", 50))
+                    "set_brightness" -> JarvisAction.SetBrightness(o.optInt("percent", 50))
+                    "call_contact" -> JarvisAction.CallContact(o.getString("name"))
+                    "toggle_speaker" -> JarvisAction.ToggleSpeaker(o.optBoolean("on", true))
+                    "open_website" -> JarvisAction.OpenWebsite(o.getString("query"))
+                    "open_power_menu" -> JarvisAction.OpenPowerMenu
                     else -> continue
                 }
             }
