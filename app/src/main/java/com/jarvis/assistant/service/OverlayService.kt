@@ -16,10 +16,10 @@ import android.widget.TextView
 import com.jarvis.assistant.MainActivity
 
 /**
- * Gemini-style floating Jarvis handle (#user request).
+ * Gemini-style floating Jarvis handle.
  * - Drag to reposition anywhere on screen
- * - LONG-PRESS the bubble → opens the Jarvis chat screen (like Gemini)
- * - Single tap → immediately starts listening for a voice command
+ * - LONG-PRESS the bubble → opens the Jarvis chat screen
+ * - Single tap → opens MainActivity, which starts listening for a voice command
  */
 class OverlayService : Service() {
 
@@ -60,10 +60,10 @@ class OverlayService : Service() {
             text = "J"
             textSize = 22f
             setTextColor(Color.WHITE)
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color(0xCC00E5FF.toInt()))
+                setColor(0xCC00E5FF.toInt())
                 setStroke(3, Color.WHITE)
             }
         }
@@ -85,7 +85,7 @@ class OverlayService : Service() {
         val handler = android.os.Handler(mainLooper)
         val longPress = Runnable {
             longPressFired = true
-            openChat()          // ← like Gemini: hold the bubble
+            openChat()
         }
 
         tv.setOnTouchListener { v, e ->
@@ -109,9 +109,14 @@ class OverlayService : Service() {
                     handler.removeCallbacks(longPress)
                     if (!longPressFired &&
                         Math.abs(e.rawX - downX) < 20 && Math.abs(e.rawY - downY) < 20) {
-                        // single tap → voice command immediately
-                        startService(Intent(this@OverlayService, WakeWordService::class.java)
-                            .setAction(WakeWordService.ACTION_COMMAND_NOW))
+                        // Route through the activity: Android 12+ blocks background
+                        // services from starting a foreground mic service directly.
+                        startActivity(
+                            Intent(this@OverlayService, MainActivity::class.java)
+                                .setAction("com.jarvis.assistant.action.WAKE_START")
+                                .putExtra("route", "chat")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        )
                     }
                     true
                 }
