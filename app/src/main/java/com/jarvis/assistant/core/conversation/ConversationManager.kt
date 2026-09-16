@@ -3,6 +3,7 @@ package com.jarvis.assistant.core.conversation
 import com.jarvis.assistant.data.prefs.JarvisPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
@@ -25,7 +26,7 @@ class ConversationManager @Inject constructor(
 
     suspend fun load() {
         try {
-            val json = prefs.conversationHistory.first()
+            val json: String = prefs.conversationHistory.first()
             if (json.isBlank()) return
             val arr = JSONArray(json)
             val list = mutableListOf<ChatMessage>()
@@ -45,7 +46,7 @@ class ConversationManager @Inject constructor(
         prefs.setConversationHistory(arr.toString())
     }
 
-    /** Privacy control #17: delete conversation history. */
+    /** Privacy control: delete conversation history. */
     suspend fun clear() {
         _messages.value = emptyList()
         prefs.setConversationHistory("")
