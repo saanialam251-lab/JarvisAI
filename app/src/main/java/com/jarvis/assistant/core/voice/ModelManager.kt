@@ -23,13 +23,20 @@ class ModelManager(private val context: Context) {
         val modelDir: (Context) -> File = { File(it.filesDir, "model") }
     }
 
-    fun isModelReady(): Boolean = modelDir(context).exists() &&
-        File(modelDir(context), "final.mdl").exists()
+    fun isModelReady(): Boolean = File(modelDir(context), "final.mdl").exists()
 
     suspend fun downloadModel(onProgress: (Int) -> Unit): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val zipFile = File(context.cacheDir, "vosk_model.zip")
-            val conn = URL(MODEL_URL).openConnection() as HttpURLConnection
+            val conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 20_000
+                instanceFollowRedirects = true
+            }
+            if (conn.responseCode !in 200..299) {
+                return@withContext Result.failure(
+                    Exception("Download failed: server returned ${conn.responseCode}"))
+            }
             conn.inputStream.use { input ->
                 BufferedInputStream(input).use { bis ->
                     FileOutputStream(zipFile).use { fos ->
@@ -37,28 +44,52 @@ class ModelManager(private val context: Context) {
                         var read: Int; var total = 0L; val size = conn.contentLength.coerceAtLeast(1)
                         while (bis.read(buf).also { read = it } != -1) {
                             fos.write(buf, 0, read); total += read
-                            onProgress(((total * 100) / size).toInt().coerceIn(0, 100))
+                            onProgress(((total * 100) / size).toInt().coerceIn(0, 99))
                         }
                     }
                 }
             }
-            unzip(zipFile, context.filesDir)
+
+            if (zipFile.length() < 1_000_000L) {
+                zipFile.delete()
+                return@withContext Result.failure(
+                    Exception("Downloaded file was incomplete (${zipFile.length()} bytes). Check your connection and try again."))
+            }
+
+            unzipStrippingTopFolder(zipFile, modelDir(context))
             zipFile.delete()
+
+            if (!isModelReady()) {
+                return@withContext Result.failure(
+                    Exception("Model files extracted but final.mdl is missing. Try downloading again."))
+            }
+            onProgress(100)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun unzip(zip: File, targetDir: File) {
+    /**
+     * The zip contains a single top-level folder (e.g. "vosk-model-small-en-us-0.15/").
+     * We strip that first path segment so contents land directly in modelDir(context)/,
+     * which is what isModelReady() and Vosk's Model(path) expect.
+     */
+    private fun unzipStrippingTopFolder(zip: File, targetDir: File) {
+        targetDir.mkdirs()
         ZipInputStream(FileInputStream(zip)).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
-                val outFile = File(targetDir, entry.name)
-                if (entry.isDirectory) outFile.mkdirs()
-                else {
-                    outFile.parentFile?.mkdirs()
-                    FileOutputStream(outFile).use { fos -> zis.copyTo(fos) }
+                val name = entry.name
+                val strippedName = name.substringAfter('/', missingDelimiterValue = "")
+                if (strippedName.isNotBlank()) {
+                    val outFile = File(targetDir, strippedName)
+                    if (entry.isDirectory) {
+                        outFile.mkdirs()
+                    } else {
+                        outFile.parentFile?.mkdirs()
+                        FileOutputStream(outFile).use { fos -> zis.copyTo(fos) }
+                    }
                 }
                 zis.closeEntry()
                 entry = zis.nextEntry
