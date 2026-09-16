@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -27,9 +28,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Foreground service (requirement #14) keeping the microphone alive for
- * the wake word within Android's supported limits — with a persistent
- * notification, as required for foregroundServiceType="microphone".
+ * Foreground service keeping the microphone alive for the wake word,
+ * with a persistent notification, as required for
+ * foregroundServiceType="microphone" on Android 10+.
  */
 @AndroidEntryPoint
 class WakeWordService : Service() {
@@ -58,7 +59,25 @@ class WakeWordService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        startForeground(NOTIF_ID, buildNotification("Listening for \"Jarvis\""))
+        startForegroundCompat("Starting Jarvis…")
+    }
+
+    private fun startForegroundCompat(text: String) {
+        val notif = buildNotification(text)
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        try {
+            if (Build.VERSION.SDK_INT >= 29 && micGranted) {
+                startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIF_ID, notif)
+            }
+        } catch (e: Exception) {
+            // Can't legally run as a microphone foreground service without the
+            // permission on Android 14 — stop cleanly instead of crashing.
+            stopSelf()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
