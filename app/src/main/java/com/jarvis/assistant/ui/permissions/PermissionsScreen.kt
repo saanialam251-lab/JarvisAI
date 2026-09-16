@@ -74,6 +74,16 @@ fun PermissionsScreen(nav: NavController) {
                 },
                 { ctx -> ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                     Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }),
+            PermItem("Contacts", "Lets Jarvis look up a contact's number to call or message them by name.",
+                { ctx -> ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED },
+                { permLauncher.launch(Manifest.permission.READ_CONTACTS) }),
+            PermItem("Phone calls", "Lets Jarvis place a call directly. Without this, it will open the dialer pre-filled and you tap Call yourself.",
+                { ctx -> ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED },
+                { permLauncher.launch(Manifest.permission.CALL_PHONE) }),
+            PermItem("Modify system settings", "Needed for voice commands like 'set brightness to 50%'.",
+                { ctx -> Settings.System.canWrite(ctx) },
+                { ctx -> ctx.startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }),
         )
     }
 
