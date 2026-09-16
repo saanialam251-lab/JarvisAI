@@ -3,14 +3,16 @@ package com.jarvis.assistant.ui.settings
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -83,21 +85,30 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
             contentPadding = PaddingValues(vertical = 16.dp)) {
 
             item { Section("Voice") }
-            item { SwitchRow("Wake word \"Jarvis\"", "Always listen for the wake word", s.wakeWordEnabled, onChange = {
-                v -> vm.update { it.copy(wakeWordEnabled = v) } }) }
-            item { SwitchRow("Background listening", "Restart after reboot (uses foreground service)", s.backgroundListening) { v ->
-                vm.update { it.copy(backgroundListening = v) } } }
+            item {
+                SwitchRow("Wake word \"Jarvis\"", "Always listen for the wake word", s.wakeWordEnabled) { v ->
+                    vm.update { it.copy(wakeWordEnabled = v) }
+                }
+            }
+            item {
+                SwitchRow("Background listening", "Restart after reboot (uses foreground service)", s.backgroundListening) { v ->
+                    vm.update { it.copy(backgroundListening = v) }
+                }
+            }
             item {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     Text("Wake word sensitivity: ${(s.sensitivity * 100).toInt()}%",
                         style = MaterialTheme.typography.bodyMedium)
-                    Slider(s.sensitivity, { v -> vm.update { it.copy(sensitivity = v) } })
+                    Slider(value = s.sensitivity, onValueChange = { v -> vm.update { it.copy(sensitivity = v) } })
                 }
             }
             item { EditRow("Language", s.language) { v -> vm.update { it.copy(language = v) } } }
             item { EditRow("Assistant voice", s.assistantVoice) { v -> vm.update { it.copy(assistantVoice = v) } } }
-            item { SwitchRow("Floating Jarvis bubble", "Like Gemini — drag it, long-press to open chat", s.overlayEnabled) { v ->
-                vm.update { it.copy(overlayEnabled = v) } } }
+            item {
+                SwitchRow("Floating Jarvis bubble", "Like Gemini — drag it, long-press to open chat", s.overlayEnabled) { v ->
+                    vm.update { it.copy(overlayEnabled = v) }
+                }
+            }
             item {
                 TextButton(onClick = { vm.showOverlay(context) }) { Text("Show floating bubble now") }
             }
@@ -121,10 +132,17 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
             item { Section("AI provider") }
             item {
                 Row {
-                    FilterChip(s.aiProvider == "local", { vm.update { it.copy(aiProvider = "local") } },
-                        modifier = Modifier.padding(end = 8.dp)) { Text("Local (free, offline)") }
-                    FilterChip(s.aiProvider == "cloud", { vm.update { it.copy(aiProvider = "cloud") } }) {
-                        Text("Cloud (optional)") }
+                    FilterChip(
+                        selected = s.aiProvider == "local",
+                        onClick = { vm.update { it.copy(aiProvider = "local") } },
+                        label = { Text("Local (free, offline)") },
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    FilterChip(
+                        selected = s.aiProvider == "cloud",
+                        onClick = { vm.update { it.copy(aiProvider = "cloud") } },
+                        label = { Text("Cloud (optional)") }
+                    )
                 }
             }
             item { EditRow("API key (optional)", s.apiKey, hidden = true) { v -> vm.update { it.copy(apiKey = v) } } }
@@ -132,8 +150,10 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
             item { EditRow("Model", s.model) { v -> vm.update { it.copy(model = v) } } }
 
             item { Section("Safety & privacy") }
-            item { SwitchRow("Ask before sensitive actions", "Confirm before sending messages, purchases, deletes…",
-                s.askBeforeSensitive) { v -> vm.update { it.copy(askBeforeSensitive = v) } } }
+            item {
+                SwitchRow("Ask before sensitive actions", "Confirm before sending messages, purchases, deletes…",
+                    s.askBeforeSensitive) { v -> vm.update { it.copy(askBeforeSensitive = v) } }
+            }
             item { TextButton(onClick = { vm.clearHistory() }) { Text("Delete conversation history") } }
             item { TextButton(onClick = { vm.clearLogs() }) { Text("Clear task logs") } }
             item {
@@ -144,10 +164,10 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
             }
 
             item { Section("Task log") }
-            logs.takeLast(15).forEach { rec ->
-                item { Text("• ${rec.goal} — ${rec.status}",
+            items(logs.takeLast(15)) { rec ->
+                Text("• ${rec.goal} — ${rec.status}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -161,7 +181,7 @@ fun SettingsScreen(nav: NavController, vm: SettingsViewModel = hiltViewModel()) 
 @Composable private fun SwitchRow(title: String, sub: String, checked: Boolean,
                                   onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(sub, style = MaterialTheme.typography.bodySmall,
